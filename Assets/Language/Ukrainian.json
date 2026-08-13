@@ -10,7 +10,7 @@
   "BusinessLogic": "Бізнес-логіка:",
   "UiUxDesign": "Дизайн UI/UX:",
   "UrlLabel": "URL Посилання",
-  "UrlPlaceholder": "Вставте посилання з GitHub",
+  "UrlPlaceholder": "Вставте посилання на *.zpk файл",
   "NameLabel": "Назва",
   "NamePlaceholder": "Назва",
   "VersionLabel": "Версія",
