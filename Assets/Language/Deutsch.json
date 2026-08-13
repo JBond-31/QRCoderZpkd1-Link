@@ -10,7 +10,7 @@
   "BusinessLogic": "Geschäftslogik:",
   "UiUxDesign": "UI/UX-Design:",
   "UrlLabel": "URL-Link",
-  "UrlPlaceholder": "GitHub-Link einfügen",
+  "UrlPlaceholder": "Link zur *.zpk-Datei einfügen",
   "NameLabel": "Name",
   "NamePlaceholder": "Name",
   "VersionLabel": "Version",
