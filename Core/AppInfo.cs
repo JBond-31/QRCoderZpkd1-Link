@@ -6,7 +6,7 @@ namespace QRCoderZpkd1_Link.Core
   {
     public static string GetDisplayVersion()
     {
-      // Берем текущую сборку (наш exe)
+      // Берем текущую сборку (наш исполняемый файл)
       var assembly = Assembly.GetEntryAssembly();
 
       // Получаем атрибут InformationalVersion, который мы задали в .csproj
