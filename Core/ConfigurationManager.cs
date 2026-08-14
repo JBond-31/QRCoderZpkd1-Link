@@ -22,7 +22,7 @@ namespace QRCoderZpkd1_Link.Core
   public static class ConfigManager
   {
     /// <summary>
-    /// Возвращает путь к файлу configurations.json рядом с .exe файлом (с поддержкой фолбека)
+    /// Возвращает путь к файлу configurations.json рядом с .exe файлом (с поддержкой кроссплатформенного фолбека и учета регистра)
     /// </summary>
     public static string GetConfigFilePath()
     {
@@ -31,6 +31,30 @@ namespace QRCoderZpkd1_Link.Core
       // Основной путь в папке Data
       string dataPath = Path.Combine(baseDir, "Data", "configurations.json");
       if (File.Exists(dataPath)) return dataPath;
+
+      // Кроссплатформенный поиск с учетом возможного различия регистра в Linux/macOS
+      string dataDir = Path.Combine(baseDir, "Data");
+      if (Directory.Exists(dataDir))
+      {
+        var foundFile = Directory.GetFiles(dataDir, "*.json")
+            .FirstOrDefault(f => Path.GetFileName(f).Equals("configurations.json", StringComparison.OrdinalIgnoreCase));
+        if (foundFile != null) return foundFile;
+      }
+      else
+      {
+        // Поиск папки с учетом регистра (например, если папка названа в нижнем регистре)
+        var foundDir = Directory.GetDirectories(baseDir)
+            .FirstOrDefault(d => Path.GetFileName(d).Equals("Data", StringComparison.OrdinalIgnoreCase));
+        if (foundDir != null)
+        {
+          dataPath = Path.Combine(foundDir, "configurations.json");
+          if (File.Exists(dataPath)) return dataPath;
+
+          var foundFile = Directory.GetFiles(foundDir, "*.json")
+              .FirstOrDefault(f => Path.GetFileName(f).Equals("configurations.json", StringComparison.OrdinalIgnoreCase));
+          if (foundFile != null) return foundFile;
+        }
+      }
 
       // Защитный фолбек на случай старого кэша сборки в папке Language
       string langPath = Path.Combine(baseDir, "Language", "configurations.json");
