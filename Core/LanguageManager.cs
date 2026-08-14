@@ -36,58 +36,69 @@ namespace QRCoderZpkd1_Link.Core
     {
       try
       {
+        // Получаем 2-буквенный код (например, "ru", "de", "en")
         string langCode = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLower();
         var available = GetAvailableLanguages();
 
-        string targetLanguageName = langCode switch
-        {
-          "ru" => "Russian",
-          "uk" => "Ukrainian",
-          "de" => "German",
-          _ => "English"
-        };
+        // Универсальный поиск:
+        // Ищем файл, в названии которого (Code) или в "родном" имени (DisplayName) 
+        // встречается код языка ОС (например, "ru" в "Russian" или "fr" в "French")
+        var match = available.FirstOrDefault(l =>
+            l.Code.Contains(langCode, StringComparison.OrdinalIgnoreCase) ||
+            l.DisplayName.Contains(langCode, StringComparison.OrdinalIgnoreCase) ||
+            langCode.Contains(l.Code, StringComparison.OrdinalIgnoreCase));
 
-        // Ищем точное совпадение по системному коду файла
-        var matched = available.FirstOrDefault(l => string.Equals(l.Code, targetLanguageName, StringComparison.OrdinalIgnoreCase));
-        if (matched != null)
-        {
-          return matched.Code;
-        }
-
-        // Умный фолбек на случай, если файлы названы на родном языке (например, "Русский.json" или "Deutsch.json")
-        if (langCode == "de")
-        {
-          var match = available.FirstOrDefault(l => l.Code.StartsWith("De", StringComparison.OrdinalIgnoreCase) || l.DisplayName.StartsWith("De", StringComparison.OrdinalIgnoreCase));
-          if (match != null) return match.Code;
-        }
-        if (langCode == "ru")
-        {
-          var match = available.FirstOrDefault(l => l.Code.StartsWith("Ру", StringComparison.OrdinalIgnoreCase) || l.DisplayName.StartsWith("Ру", StringComparison.OrdinalIgnoreCase));
-          if (match != null) return match.Code;
-        }
-        if (langCode == "uk")
-        {
-          var match = available.FirstOrDefault(l => l.Code.StartsWith("Ук", StringComparison.OrdinalIgnoreCase) || l.DisplayName.StartsWith("Ук", StringComparison.OrdinalIgnoreCase));
-          if (match != null) return match.Code;
-        }
+        if (match != null) return match.Code;
       }
       catch
       {
-        // Санитарный сейв
+        // Если что-то пошло не так, вернем дефолтный English
       }
 
       return "English";
     }
 
+    /// <summary>
+    /// Кроссплатформенный поиск папки с языками с защитой от регистра в Linux/macOS
+    /// </summary>
     private static string GetLanguagesDirectory()
     {
       string baseDir = AppContext.BaseDirectory;
 
+      // 1. Прямая проверка папки Language
       string path = Path.Combine(baseDir, "Language");
       if (Directory.Exists(path)) return path;
 
+      // 2. Проверка Assets/Language
       path = Path.Combine(baseDir, "Assets", "Language");
       if (Directory.Exists(path)) return path;
+
+      // 3. Регистронезависимый поиск папки на уровне AppContext.BaseDirectory
+      try
+      {
+        if (Directory.Exists(baseDir))
+        {
+          var foundDir = Directory.GetDirectories(baseDir)
+              .FirstOrDefault(d => Path.GetFileName(d).Equals("Language", StringComparison.OrdinalIgnoreCase) ||
+                                   Path.GetFileName(d).Equals("Languages", StringComparison.OrdinalIgnoreCase));
+          if (foundDir != null) return foundDir;
+
+          // Проверяем внутри папки Assets, если она есть
+          var assetsDir = Directory.GetDirectories(baseDir)
+              .FirstOrDefault(d => Path.GetFileName(d).Equals("Assets", StringComparison.OrdinalIgnoreCase));
+          if (assetsDir != null)
+          {
+            var foundInAssets = Directory.GetDirectories(assetsDir)
+                .FirstOrDefault(d => Path.GetFileName(d).Equals("Language", StringComparison.OrdinalIgnoreCase) ||
+                                     Path.GetFileName(d).Equals("Languages", StringComparison.OrdinalIgnoreCase));
+            if (foundInAssets != null) return foundInAssets;
+          }
+        }
+      }
+      catch
+      {
+        // Игнорируем ошибки файловой системы при поиске
+      }
 
       return Path.Combine(baseDir, "Language");
     }
@@ -178,12 +189,27 @@ namespace QRCoderZpkd1_Link.Core
       CurrentLanguage = languageName;
     }
 
+    /// <summary>
+    /// Кроссплатформенная загрузка файла перевода с защитой от регистра символов
+    /// </summary>
     private static void LoadLanguageFile(string fileName)
     {
       try
       {
         string dir = GetLanguagesDirectory();
         string path = Path.Combine(dir, fileName);
+
+        // Если файл не найден напрямую, ищем его с учетом регистра (для Linux/macOS)
+        if (!File.Exists(path) && Directory.Exists(dir))
+        {
+          var matchedFile = Directory.GetFiles(dir, "*.json")
+              .FirstOrDefault(f => Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
+
+          if (matchedFile != null)
+          {
+            path = matchedFile;
+          }
+        }
 
         if (File.Exists(path))
         {
