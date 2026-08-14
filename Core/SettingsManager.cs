@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace QRCoderZpkd1_Link.Core
@@ -26,11 +27,34 @@ namespace QRCoderZpkd1_Link.Core
   /// </summary>
   public static class SettingsManager
   {
-    // Путь к файлу конфигурации строго рядом с исполняемым файлом .exe
-    private static readonly string SettingsFilePath = Path.Combine(AppContext.BaseDirectory, "UserSetting.json");
-
     // Текущие активные настройки
     public static UserSettings Current { get; private set; } = new UserSettings();
+
+    /// <summary>
+    /// Динамически вычисляет путь к файлу конфигурации в зависимости от операционной системы.
+    /// </summary>
+    private static string GetSettingsFilePath()
+    {
+      if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+      {
+        // На Windows приложение портативное: сохраняем строго рядом с исполняемым файлом .exe
+        return Path.Combine(AppContext.BaseDirectory, "UserSetting.json");
+      }
+      else
+      {
+        // На Linux/macOS приложение инсталлируется: папка программы доступна только для чтения.
+        // Сохраняем в папку пользователя ~/.config/QRCoderZpkd1_Link/ (или эквивалент ApplicationData)
+        string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string appFolder = Path.Combine(appDataPath, "QRCoderZpkd1_Link");
+
+        if (!Directory.Exists(appFolder))
+        {
+          Directory.CreateDirectory(appFolder);
+        }
+
+        return Path.Combine(appFolder, "UserSetting.json");
+      }
+    }
 
     /// <summary>
     /// Загрузка настроек из файла UserSetting.json
@@ -39,9 +63,10 @@ namespace QRCoderZpkd1_Link.Core
     {
       try
       {
-        if (File.Exists(SettingsFilePath))
+        string filePath = GetSettingsFilePath();
+        if (File.Exists(filePath))
         {
-          string json = File.ReadAllText(SettingsFilePath);
+          string json = File.ReadAllText(filePath);
           Current = JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
         }
       }
@@ -59,14 +84,15 @@ namespace QRCoderZpkd1_Link.Core
     {
       try
       {
+        string filePath = GetSettingsFilePath();
         // Форматируем JSON с отступами, чтобы пользователю было удобно его читать при необходимости
         var options = new JsonSerializerOptions { WriteIndented = true };
         string json = JsonSerializer.Serialize(Current, options);
-        File.WriteAllText(SettingsFilePath, json);
+        File.WriteAllText(filePath, json);
       }
       catch
       {
-        // Игнорируем возможные ошибки записи (например, если программа запущена из защищенной директории без прав)
+        // Игнорируем возможные ошибки записи (например, если нет прав)
       }
     }
   }
